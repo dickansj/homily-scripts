@@ -48,3 +48,4 @@ All the scripts are set up to be run directly from the parent directory, so you 
 * make the Typst template more easily configurable
 * figure out some nice way of making tablet or phone output (maybe a self-contained HTML file?)
 * figure out and hopefully mitigate why the USCCB website sometimes blocks us
+* make an automated setup script for those who are comfortable piping curl to bash
