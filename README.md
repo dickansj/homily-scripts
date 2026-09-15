@@ -47,3 +47,4 @@ All the scripts are set up to be run directly from the parent directory, so you 
 * make preaching speed configurable for time estimations (right now it's just based on Shane's average speed)
 * make the Typst template more easily configurable
 * figure out some nice way of making tablet or phone output (maybe a self-contained HTML file?)
+* figure out and hopefully mitigate why the USCCB website sometimes blocks us
