@@ -22,6 +22,8 @@ Only tested/used on a Mac; would probably work on Linux, too? I've run it on Win
 2. Import this project as a submodule for that git repo; I call it `_scripts` but you do you.
     ```sh
     git submodule add git@github.com:sjml/homily-scripts.git _scripts
+    git add .gitmodules _scripts
+    git commit -m "setting up submodule"
     ```
 3. Initialize the Python environment.
    ```sh
