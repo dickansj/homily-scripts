@@ -1,3 +1,5 @@
+// Note that all $variable$ things will get replaced by Pandoc at render-time
+
 #let horizontalrule = line(start: (25%, 0%), end: (75%, 0%))
 
 #let date_string = "$date$"
