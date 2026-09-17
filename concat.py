@@ -24,9 +24,9 @@ def check_and_append_file(fname: str, dir: str):
     fullpath = os.path.join(dir, fname)
     if not os.path.isfile(fullpath):
         return
-    if f.startswith(("_", ".")):
+    if fname.startswith(("_", ".")):
         return
-    if not f.endswith(".md"):
+    if not fname.endswith(".md"):
         return
 
     with open(fullpath, "r", encoding="utf-8") as infile:

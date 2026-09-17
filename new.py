@@ -121,7 +121,7 @@ metadata = {
 
 output_file_path = f"./{metadata['date']}.md"
 if os.path.exists(output_file_path):
-    sys.stderr.write(f"Output file {output_file_path} already exists!")
+    sys.stderr.write(f"Output file {output_file_path} already exists!\n")
     sys.exit(1)
 
 if location == "":
@@ -192,8 +192,10 @@ try:
         if not reading_header:
             raise ScrapingException("no reading label header in one of the verse blocks")
         reading_label = reading_header.text.strip()
-        if reading_label == "Alleluia":
-            continue # we don't care about the Alleluia verse for this
+        # The verse before the Gospel is labeled "Alleluia" most of the year and
+        # "Verse Before the Gospel" in Lent; neither is a reading.
+        if reading_label.lower() in ("alleluia", "verse before the gospel"):
+            continue
         reading_address_link = c_header.select_one(".address a")
         if not reading_address_link:
             raise ScrapingException(f"no address found for {reading_label}")
@@ -230,5 +232,9 @@ if os.environ.get("TERM_PROGRAM", "") == "vscode":
     else:
         print("❌ Hmmm, couldn't figure out how to call VS Code.")
 elif os.environ.get("ZED_TERM", "") == "true":
-    print("📝 Opening file in Zed...")
-    subprocess.check_call(["zed", output_file_path])
+    zed = shutil.which("zed")
+    if zed:
+        print("📝 Opening file in Zed...")
+        subprocess.check_call([zed, output_file_path])
+    else:
+        print("❌ Hmmm, couldn't figure out how to call Zed.")
