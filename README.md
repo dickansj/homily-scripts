@@ -32,12 +32,18 @@ Only tested/used on a Mac; would probably work on Linux, too? I've run it on Win
    ./env/bin/pip install -r requirements.txt
    cd ..
    ```
+4. Build the lectionary table, once. It is what `new.py` falls back on when the USCCB website won't answer (which is most of the time, for a script).
+   ```sh
+   ./_scripts/fetch_lectionary.py
+   ```
+   Fourteen pages from [catholic-resources.org](https://catholic-resources.org/Lectionary/), cached under `tmp/` and never committed.
 
 ## Usage
 
 All the scripts are set up to be run directly from the parent directory, so you can invoke `./_scripts/new.py` straight instead of having to activate the Python environment. 
 
-* `new.py` --- Create a new empty homily; you'll be prompted to pick the date, and it will fill in appropriate metadata from the USCCB website. You can also specify a location or leave it blank to re-use the most recent one. 
+* `new.py [--date YYYY-MM-DD]` --- Create a new empty homily; you'll be prompted to pick the date (or pass `--date`), and it will fill in appropriate metadata from the USCCB website. You can also specify a location or leave it blank to re-use the most recent one. When USCCB doesn't answer, the lectionary number is computed locally (`liturgical.py`) and the readings come from the table (`lectionary.py`); the only thing the local route can't supply is USCCB's exact wording of the day's name, so `lectionary_string` gets a short form like `Thu 24th of OT` instead.
+* `fetch_lectionary.py` --- Build (or `--refresh`) the readings table; `--show 445` prints what it holds for a number.
 * `wc.py [homily_file]` --- Give a word count of a specific homily along with a time estimate based on preaching speed. You can pass `--watch` as a flag to have this run continuously and update whenever the file changes on disk. 
 * `render.py [homily_file]` --- Takes the Markdown file and generates a preaching script. (Large font, numbered pages, doesn't break paragraphs across pages, and has a very large bottom margin so you don't end up looking down too much. Check the Typst template for more details.)
 * `concat.py` --- Puts all the homilies together in chronological order in a single file. If you don't specify an output, it will print to stdout.
@@ -47,5 +53,4 @@ All the scripts are set up to be run directly from the parent directory, so you 
 * make preaching speed configurable for time estimations (right now it's just based on Shane's average speed)
 * make the Typst template more easily configurable
 * figure out some nice way of making tablet or phone output (maybe a self-contained HTML file?)
-* figure out and hopefully mitigate why the USCCB website sometimes blocks us
 * make an automated setup script for those who are comfortable piping curl to bash

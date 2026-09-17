@@ -24,7 +24,14 @@ from prompt_toolkit.layout import Layout
 from prompt_toolkit.layout.containers import Window
 from prompt_toolkit.layout.controls import FormattedTextControl
 
-USCCB_WEB_TEMPLATE = "https://bible.usccb.org/bible/readings/%m%d%y.cfm"
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import lectionary  # noqa: E402
+import liturgical  # noqa: E402
+
+# Overridable so the local fallback can be exercised on purpose -- point it at a
+# closed port -- rather than by waiting for USCCB to refuse.
+USCCB_WEB_TEMPLATE = os.environ.get(
+    "USCCB_URL_TEMPLATE", "https://bible.usccb.org/bible/readings/%m%d%y.cfm")
 
 
 os.chdir(os.path.join(os.path.dirname(__file__), ".."))
@@ -90,26 +97,36 @@ def keypress_enter(event):
 def ctrl_c(event):
     event.app.exit(result=None)
 
-app = Application(
-    layout=Layout(Window(content=picker.control)),
-    key_bindings=kb,
-    full_screen=False,
-)
+# --date YYYY-MM-DD skips the picker, for scripting and for testing.
+target_date: date|None = None
+for _i, _a in enumerate(sys.argv[1:]):
+    if _a == "--date" and _i + 2 < len(sys.argv):
+        target_date = date.fromisoformat(sys.argv[_i + 2])
+    elif _a.startswith("--date="):
+        target_date = date.fromisoformat(_a.split("=", 1)[1])
 
-picker.app = app
-
-target_date: date|None = app.run()
+if target_date is None:
+    app = Application(
+        layout=Layout(Window(content=picker.control)),
+        key_bindings=kb,
+        full_screen=False,
+    )
+    picker.app = app
+    target_date = app.run()
 
 if not target_date:
     sys.stderr.write("No date selected!\n")
     sys.exit(1)
 
 
-try:
-    location = input("Location? (leave blank to copy most recent) > ")
-except KeyboardInterrupt:
-    print()
-    raise SystemExit(130)
+# No terminal, no prompt: a scripted run copies the most recent location.
+location = ""
+if sys.stdin.isatty():
+    try:
+        location = input("Location? (leave blank to copy most recent) > ")
+    except (KeyboardInterrupt, EOFError):
+        print()
+        raise SystemExit(130)
 
 metadata = {
     "lectionary_number": "",
@@ -155,6 +172,7 @@ class ScrapingException(Exception):
 
 url_req = target_date.strftime(USCCB_WEB_TEMPLATE)
 dl_path = os.path.join("tmp", os.path.basename(url_req))
+os.makedirs("tmp", exist_ok=True)
 try:
     if not os.path.exists(dl_path):
         res = requests.get(url_req)
@@ -205,10 +223,35 @@ try:
     metadata["readings"] = "; ".join(readings).replace(" ", " ")
 
 
-except ScrapingException as exc:
-    err = True
-    sys.stderr.write(f"Scraping didn't work: {exc.message}\n")
-    sys.stderr.write("Creating file with mostly blank metadata...\n")
+except (ScrapingException, requests.RequestException) as exc:
+    # USCCB sits behind a bot challenge that scripts usually fail, so this is the
+    # common path, not the exception. The calendar can compute the lectionary
+    # number for any day of the temporal cycle, and the table built by
+    # fetch_lectionary.py turns that into the readings -- everything except
+    # USCCB's own wording of the day's name, which describe() approximates.
+    message = getattr(exc, "message", exc.__class__.__name__)
+    print(f"USCCB didn't answer ({str(message).splitlines()[0][:80]})")
+    print("Falling back to the local calendar and lectionary table...")
+
+    number = liturgical.lectionary_number(target_date)
+    if number:
+        metadata["lectionary_number"] = number
+        metadata["lectionary_string"] = liturgical.describe(target_date)
+        metadata["readings"] = lectionary.readings_line(
+            number, liturgical.ferial_year(target_date))
+        print(f"   local: {number}: {metadata['lectionary_string']}")
+    if not number:
+        err = True
+        sys.stderr.write(f"The calendar has no lectionary number for {target_date} "
+                         "(most of the sanctoral cycle is not in it).\n")
+        sys.stderr.write("Creating file with mostly blank metadata...\n")
+    elif not metadata["readings"]:
+        if not lectionary.available():
+            sys.stderr.write("The lectionary table has not been built yet -- run "
+                             "fetch_lectionary.py once.\n")
+        else:
+            sys.stderr.write(f"Lectionary {number}'s readings are chosen from options "
+                             "-- fill in `readings` by hand.\n")
 
 
 with open(output_file_path, "w") as outfile:
